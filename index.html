@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>早期发病结直肠癌（EOCRC）预后计算器</title>
+    <!-- Tailwind CSS v3 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <!-- Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1e88e5',
+                        secondary: '#64b5f6',
+                        accent: '#0d47a1',
+                        light: '#f5f5f5',
+                        warning: '#ff9800',
+                        danger: '#f44336',
+                        success: '#4caf50'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                        'result': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .form-input {
+                @apply w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200;
+            }
+            .form-label {
+                @apply block text-sm font-medium text-gray-700 mb-1;
+            }
+            .form-group {
+                @apply mb-5;
+            }
+            .btn {
+                @apply px-6 py-2 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-300 transform hover:scale-105;
+            }
+            .btn-primary {
+                @apply bg-primary text-white hover:bg-accent focus:ring-primary shadow-md hover:shadow-lg;
+            }
+            .btn-secondary {
+                @apply bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-400 shadow hover:shadow-md;
+            }
+            .card {
+                @apply bg-white rounded-xl shadow-card p-6 border border-gray-100;
+            }
+            .result-card {
+                @apply bg-white rounded-xl shadow-result p-6 transition-all duration-500 border border-gray-100;
+            }
+            .badge {
+                @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+            }
+            .badge-low {
+                @apply bg-green-100 text-green-800;
+            }
+            .badge-high {
+                @apply bg-red-100 text-red-800;
+            }
+            .print-btn {
+                @apply fixed bottom-6 right-6 bg-primary text-white p-3 rounded-full shadow-lg hover:bg-accent transition-all duration-300 z-50 hover:scale-110;
+            }
+            .progress-ring {
+                @apply relative flex items-center justify-center;
+            }
+            .progress-ring-circle {
+                @apply transition-all duration-500 ease-in-out;
+                transform: rotate(-90deg);
+                transform-origin: 50% 50%;
+            }
+            .score-value {
+                @apply absolute text-3xl font-bold text-primary;
+            }
+            .survival-card {
+                @apply bg-blue-50 p-4 rounded-xl text-center transition-all duration-300 hover:shadow-md border border-blue-100;
+            }
+            .section-title {
+                @apply text-lg font-semibold text-gray-700 mb-3 flex items-center;
+            }
+            .section-title i {
+                @apply mr-2 text-primary;
+            }
+            .header-wave {
+                @apply absolute bottom-0 left-0 w-full overflow-hidden leading-[0];
+            }
+            .header-wave svg {
+                @apply relative block w-full h-[30px];
+            }
+            .header-wave .shape-fill {
+                @apply fill-white;
+            }
+            @media print {
+                .no-print {
+                    display: none !important;
+                }
+                .result-card {
+                    box-shadow: none !important;
+                    border: 1px solid #ccc !important;
+                }
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- 页面头部 -->
+    <header class="bg-primary text-white shadow-md relative overflow-hidden">
+        <div class="container mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center">
+            <div class="text-center md:text-left mb-4 md:mb-0">
+                <h1 class="text-2xl md:text-3xl font-bold flex items-center justify-center md:justify-start">
+                    <i class="fa fa-heartbeat mr-3"></i>
+                    <span class="lang" data-lang="zh">早期发病结直肠癌（EOCRC）预后计算器</span>
+                    <span class="hidden lang" data-lang="en">Early-Onset Colorectal Cancer Prognosis Calculator</span>
+                </h1>
+                <p class="text-sm opacity-80 mt-1 lang" data-lang="zh">基于医学研究数据的生存预测工具</p>
+                <p class="text-sm opacity-80 mt-1 hidden lang" data-lang="en">Survival prediction tool based on medical research data</p>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button id="helpBtn" class="btn bg-white/20 hover:bg-white/30">
+                    <i class="fa fa-question-circle mr-2"></i>
+                    <span class="lang" data-lang="zh">使用帮助</span>
+                    <span class="hidden lang" data-lang="en">Help</span>
+                </button>
+                <button id="langToggle" class="btn bg-white/20 hover:bg-white/30">
+                    <i class="fa fa-globe mr-2"></i>
+                    <span class="lang" data-lang="zh">English</span>
+                    <span class="hidden lang" data-lang="en">中文</span>
+                </button>
+            </div>
+        </div>
+        <!-- 波浪效果 -->
+        <div class="header-wave">
+            <svg data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
+                <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" class="shape-fill"></path>
+            </svg>
+        </div>
+    </header>
+
+    <!-- 主要内容区 -->
+    <main class="container mx-auto px-4 py-8 -mt-6 relative z-10">
+        <div class="flex flex-col lg:flex-row gap-8">
+            <!-- 左侧：输入表单 -->
+            <div class="lg:w-1/2">
+                <div class="card transform transition-all duration-500 hover:shadow-lg h-full">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                            <i class="fa fa-user-md text-primary mr-2"></i>
+                            <span class="lang" data-lang="zh">患者临床指标</span>
+                            <span class="lang hidden" data-lang="en">Patient Clinical Indicators</span>
+                        </h2>
+                        <div class="bg-blue-100 text-primary px-3 py-1 rounded-full text-sm font-medium">
+                            <i class="fa fa-asterisk mr-1"></i>
+                            <span class="lang" data-lang="zh">必填项</span>
+                            <span class="lang hidden" data-lang="en">Required</span>
+                        </div>
+                    </div>
+                    
+                    <form id="patientForm" class="space-y-4">
+                        <!-- 种族 -->
+                        <div class="form-group">
+                            <label class="form-label lang" data-lang="zh">种族</label>
+                            <label class="form-label hidden lang" data-lang="en">Race</label>
+                            <select id="race" class="form-input" required>
+                                <option value="" disabled selected class="lang" data-lang="zh">请选择种族</option>
+                                <option value="" disabled selected class="hidden lang" data-lang="en">Please select race</option>
+                                <option value="0" data-score="0">
+                                    <span class="lang" data-lang="zh">白人</span>
+                                    <span class="hidden lang" data-lang="en">White</span>
+                                </option>
+                                <option value="10" data-score="10">
+                                    <span class="lang" data-lang="zh">黑人</span>
+                                    <span class="hidden lang" data-lang="en">Black</span>
+                                </option>
+                                <option value="5" data-score="5">
+                                    <span class="lang" data-lang="zh">其他</span>
+                                    <span class="hidden lang" data-lang="en">Other</span>
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- 婚姻状况 -->
+                        <div class="form-group">
+                            <label class="form-label lang" data-lang="zh">婚姻状况</label>
+                            <label class="form-label hidden lang" data-lang="en">Marital Status</label>
+                            <div class="flex space-x-4">
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="marital" value="0" data-score="0" class="form-radio text-primary" required>
+                                    <span class="ml-2 lang" data-lang="zh">已婚</span>
+                                    <span class="ml-2 hidden lang" data-lang="en">Married</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="marital" value="12" data-score="12" class="form-radio text-primary">
+                                    <span class="ml-2 lang" data-lang="zh">单身</span>
+                                    <span class="ml-2 hidden lang" data-lang="en">Single</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 肿瘤位置 -->
+                        <div class="form-group">
+                            <label class="form-label lang" data-lang="zh">肿瘤位置</label>
+                            <label class="form-label hidden lang" data-lang="en">Tumor Location</label>
+                            <select id="location" class="form-input" required>
+                                <option value="" disabled selected class="lang" data-lang="zh">请选择肿瘤位置</option>
+                                <option value="" disabled selected class="hidden lang" data-lang="en">Please select tumor location</option>
+                                <option value="0" data-score="0">
+                                    <span class="lang" data-lang="zh">右半结肠</span>
+                                    <span class="hidden lang" data-lang="en">Right Colon</span>
+                                </option>
+                                <option value="11" data-score="11">
+                                    <span class="lang" data-lang="zh">左半结肠</span>
+                                    <span class="hidden lang" data-lang="en">Left Colon</span>
+                                </option>
+                                <option value="14" data-score="14">
+                                    <span class="lang" data-lang="zh">直肠</span>
+                                    <span class="hidden lang" data-lang="en">Rectum</span>
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- 病理类型 -->
+                        <div class="form-group">
+                            <label class="form-label lang" data-lang="zh">病理类型</label>
+                            <label class="form-label hidden lang" data-lang="en">Pathology Type</label>
+                            <select id="pathology" class="form-input" required>
+                                <option value="" disabled selected class="lang" data-lang="zh">请选择病理类型</option>
+                                <option value="" disabled selected class="hidden lang" data-lang="en">Please select pathology type</option>
+                                <option value="0" data-score="0">
+                                    <span class="lang" data-lang="zh">腺癌</span>
+                                    <span class="hidden lang" data-lang="en">Adenocarcinoma</span>
+                                </option>
+                                <option value="7" data-score="7">
+                                    <span class="lang" data-lang="zh">黏液腺癌/印戒细胞癌</span>
+                                    <span class="hidden lang" data-lang="en">Mucinous/Signet Ring Cell Carcinoma</span>
+                                </option>
+                                <option value="18" data-score="18">
+                                    <span class="lang" data-lang="zh">特殊类型/混合型</span>
+                                    <span class="hidden lang" data-lang="en">Special Type/Mixed</span>
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- 肿瘤分级 -->
+                        <div class="form-group">
+                            <label class="form-label lang" data-lang="zh">肿瘤分级</label>
+                            <label class="form-label hidden lang" data-lang="en">Tumor Grade</label>
+                            <select id="grade" class="form-input" required>
+                                <option value="" disabled selected class="lang" data-lang="zh">请选择肿瘤分级</option>
+                                <option value="" disabled selected class="hidden lang" data-lang="en">Please select tumor grade</option>
+                                <option value="0" data-score="0">
+                                    <span class="lang" data-lang="zh">高分化</span>
+                                    <span class="hidden lang" data-lang="en">Well Differentiated</span>
+                                </option>
+                                <option value="4" data-score="4">
+                                    <span class="lang" data-lang="zh">中分化</span>
+                                    <span class="hidden lang" data-lang="en">Moderately Differentiated</span>
+                                </option>
+                                <option value="18" data-score="18">
+                                    <span class="lang" data-lang="zh">低分化</span>
+                                    <span class="hidden lang" data-lang="en">Poorly Differentiated</span>
+                                </option>
+                                <option value="26" data-score="26">
+                                    <span class="lang" data-lang="zh">未分化</span>
+                                    <span class="hidden lang" data-lang="en">Undifferentiated</span>
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- T分期 -->
+                        <div class="form-group">
+                            <label class="form-label lang" data-lang="zh">T分期</label>
+                            <label class="form-label hidden lang" data-lang="en">T Stage</label>
+                            <select id="tStage" class="form-input" required>
+                                <option value="" disabled selected class="lang" data-lang="zh">请选择T分期</option>
+                                <option value="" disabled selected class="hidden lang" data-lang="en">Please select T stage</option>
+                                <option value="0" data-score="0">T1</option>
+                                <option value="5" data-score="5">T2</option>
+                                <option value="13" data-score="13">T3</option>
+                                <option value="21" data-score="21">T4</option>
+                            </select>
+                        </div>
+
+                        <!-- N分期 -->
+                        <div class="form-group">
+                            <label class="form-label lang" data-lang="zh">N分期</label>
+                            <label class="form-label hidden lang" data-lang="en">N Stage</label>
+                            <select id="nStage" class="form-input" required>
+                                <option value="" disabled selected class="lang" data-lang="zh">请选择N分期</option>
+                                <option value="" disabled selected class="hidden lang" data-lang="en">Please select N stage</option>
+                                <option value="0" data-score="0">N0</option>
+                                <option value="18" data-score="18">N1</option>
+                                <option value="29" data-score="29">N2</option>
+                            </select>
+                        </div>
+
+                        <!-- M分期 -->
+                        <div class="form-group">
+                            <label class="form-label lang" data-lang="zh">M分期</label>
+                            <label class="form-label hidden lang" data-lang="en">M Stage</label>
+                            <select id="mStage" class="form-input" required>
+                                <option value="" disabled selected class="lang" data-lang="zh">请选择M分期</option>
+                                <option value="" disabled selected class="hidden lang" data-lang="en">Please select M stage</option>
+                                <option value="0" data-score="0">M0</option>
+                                <option value="41" data-score="41">M1a</option>
+                                <option value="54" data-score="54">M1b</option>
+                            </select>
+                        </div>
+
+                        <!-- 术前CEA -->
+                        <div class="form-group">
+                            <label class="form-label lang" data-lang="zh">术前CEA</label>
+                            <label class="form-label hidden lang" data-lang="en">Preoperative CEA</label>
+                            <div class="flex space-x-4">
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="cea" value="0" data-score="0" class="form-radio text-primary" required>
+                                    <span class="ml-2 lang" data-lang="zh">&lt;5 ng/ml</span>
+                                    <span class="ml-2 hidden lang" data-lang="en">&lt;5 ng/ml</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="cea" value="23" data-score="23" class="form-radio text-primary">
+                                    <span class="ml-2 lang" data-lang="zh">≥5 ng/ml</span>
+                                    <span class="ml-2 hidden lang" data-lang="en">≥5 ng/ml</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 术后化疗 -->
+                        <div class="form-group">
+                            <label class="form-label lang" data-lang="zh">术后化疗</label>
+                            <label class="form-label hidden lang" data-lang="en">Postoperative Chemotherapy</label>
+                            <div class="flex space-x-4">
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="chemo" value="0" data-score="0" class="form-radio text-primary" required>
+                                    <span class="ml-2 lang" data-lang="zh">是</span>
+                                    <span class="ml-2 hidden lang" data-lang="en">Yes</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="chemo" value="31" data-score="31" class="form-radio text-primary">
+                                    <span class="ml-2 lang" data-lang="zh">否</span>
+                                    <span class="ml-2 hidden lang" data-lang="en">No</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between pt-4">
+                            <button type="reset" class="btn btn-secondary">
+                                <i class="fa fa-refresh mr-2"></i>
+                                <span class="lang" data-lang="zh">重置</span>
+                                <span class="hidden lang" data-lang="en">Reset</span>
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa fa-calculator mr-2"></i>
+                                <span class="lang" data-lang="zh">计算预后</span>
+                                <span class="hidden lang" data-lang="en">Calculate Prognosis</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 右侧：结果展示 -->
+            <div class="lg:w-1/2">
+                <div id="resultCard" class="result-card h-full">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                            <i class="fa fa-line-chart text-primary mr-2"></i>
+                            <span class="lang" data-lang="zh">预后预测结果</span>
+                            <span class="hidden lang" data-lang="en">Prognosis Prediction Results</span>
+                        </h2>
+                        <div class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium flex items-center">
+                            <i class="fa fa-check-circle mr-1"></i>
+                            <span class="lang" data-lang="zh">实时计算</span>
+                            <span class="lang hidden" data-lang="en">Real-time</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 总分显示 -->
+                    <div class="mb-8">
+                        <h3 class="section-title">
+                            <i class="fa fa-tachometer"></i>
+                            <span class="lang" data-lang="zh">总分</span>
+                            <span class="hidden lang" data-lang="en">Total Score</span>
+                        </h3>
+                        <div class="flex flex-col md:flex-row items-center justify-between">
+                            <div class="progress-ring mb-4 md:mb-0">
+                                <svg class="w-32 h-32" viewBox="0 0 100 100">
+                                    <circle class="progress-ring-circle" stroke="#e0e0e0" stroke-width="8" fill="transparent" r="40" cx="50" cy="50"/>
+                                    <circle id="scoreCircle" class="progress-ring-circle" stroke="#1e88e5" stroke-width="8" fill="transparent" r="40" cx="50" cy="50" stroke-dasharray="251.2" stroke-dashoffset="251.2"/>
+                                </svg>
+                                <span id="totalScore" class="score-value">0</span>
+                            </div>
+                            <div class="text-center md:text-left">
+                                <p class="text-gray-600 mb-2 lang" data-lang="zh">分数范围: 0-400</p>
+                                <p class="text-gray-600 mb-2 hidden lang" data-lang="en">Score Range: 0-400</p>
+                                <div class="flex items-center">
+                                    <div class="w-4 h-4 rounded-full bg-green-500 mr-2"></div>
+                                    <span class="text-sm text-gray-600 lang" data-lang="zh">低危: ≤ 240.5</span>
+                                    <span class="text-sm text-gray-600 hidden lang" data-lang="en">Low Risk: ≤ 240.5</span>
+                                </div>
+                                <div class="flex items-center mt-1">
+                                    <div class="w-4 h-4 rounded-full bg-red-500 mr-2"></div>
+                                    <span class="text-sm text-gray-600 lang" data-lang="zh">高危: > 240.5</span>
+                                    <span class="text-sm text-gray-600 hidden lang" data-lang="en">High Risk: > 240.5</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 风险分层 -->
+                    <div class="mb-8">
+                        <h3 class="section-title">
+                            <i class="fa fa-shield"></i>
+                            <span class="lang" data-lang="zh">风险分层</span>
+                            <span class="hidden lang" data-lang="en">Risk Stratification</span>
+                        </h3>
+                        <div class="flex items-center">
+                            <div id="riskLevel" class="badge badge-low text-base py-2 px-4">
+                                <i class="fa fa-check-circle mr-2"></i>
+                                <span class="lang" data-lang="zh">低危</span>
+                                <span class="hidden lang" data-lang="en">Low Risk</span>
+                            </div>
+                            <div class="ml-4 flex-1">
+                                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                    <div id="riskBar" class="h-full bg-green-500 rounded-full transition-all duration-1000" style="width: 30%"></div>
+                                </div>
+                                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                    <span>0</span>
+                                    <span>240.5</span>
+                                    <span>400</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 生存概率图表 -->
+                    <div class="mb-8">
+                        <h3 class="section-title">
+                            <i class="fa fa-area-chart"></i>
+                            <span class="lang" data-lang="zh">生存概率预测</span>
+                            <span class="hidden lang" data-lang="en">Survival Probability Prediction</span>
+                        </h3>
+                        <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+                            <div class="h-64">
+                                <canvas id="survivalChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 生存概率数值 -->
+                    <div class="grid grid-cols-3 gap-4 mb-8">
+                        <div class="survival-card">
+                            <div class="flex justify-center mb-2">
+                                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                    <i class="fa fa-calendar text-primary"></i>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-1 lang" data-lang="zh">1年生存率</p>
+                            <p class="text-sm text-gray-600 mb-1 hidden lang" data-lang="en">1-Year Survival</p>
+                            <p id="oneYearSurvival" class="text-2xl font-bold text-primary">--%</p>
+                        </div>
+                        <div class="survival-card">
+                            <div class="flex justify-center mb-2">
+                                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                    <i class="fa fa-calendar-check-o text-primary"></i>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-1 lang" data-lang="zh">3年生存率</p>
+                            <p class="text-sm text-gray-600 mb-1 hidden lang" data-lang="en">3-Year Survival</p>
+                            <p id="threeYearSurvival" class="text-2xl font-bold text-primary">--%</p>
+                        </div>
+                        <div class="survival-card">
+                            <div class="flex justify-center mb-2">
+                                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                    <i class="fa fa-calendar-plus-o text-primary"></i>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-1 lang" data-lang="zh">5年生存率</p>
+                            <p class="text-sm text-gray-600 mb-1 hidden lang" data-lang="en">5-Year Survival</p>
+                            <p id="fiveYearSurvival" class="text-2xl font-bold text-primary">--%</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 临床建议 -->
+                    <div class="bg-gradient-to-r from-blue-50 to-white p-5 rounded-xl border border-blue-100 shadow-sm">
+                        <h3 class="section-title">
+                            <i class="fa fa-stethoscope"></i>
+                            <span class="lang" data-lang="zh">临床建议</span>
+                            <span class="hidden lang" data-lang="en">Clinical Recommendations</span>
+                        </h3>
+                        <div class="prose text-gray-700 max-w-none">
+                            <p id="clinicalRecommendation" class="lang leading-relaxed" data-lang="zh">
+                                请输入患者临床指标以获取预后预测结果和临床建议。
+                            </p>
+                            <p id="clinicalRecommendationEn" class="hidden lang leading-relaxed" data-lang="en">
+                                Please enter patient clinical indicators to obtain prognosis prediction results and clinical recommendations.
+                            </p>
+                        </div>
+                        <div class="mt-4 text-xs text-gray-500 italic">
+                            <i class="fa fa-exclamation-circle mr-1"></i>
+                            <span class="lang" data-lang="zh">本建议仅供医疗专业人员参考，不应替代专业医生的判断。</span>
+                            <span class="hidden lang" data-lang="en">This recommendation is for reference only and should not replace the judgment of a professional physician.</span>
+                        </div>
+                    </div>
+                </div>
+                
+
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-gray-800 text-white py-8 mt-16">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                    <h3 class="text-lg font-semibold mb-3 flex items-center">
+                        <i class="fa fa-heartbeat mr-2 text-primary"></i>
+                        <span class="lang" data-lang="zh">早期发病结直肠癌预后计算器</span>
+                        <span class="hidden lang" data-lang="en">EOCRC Prognosis Calculator</span>
+                    </h3>
+                    <p class="text-sm text-gray-400 mb-4 lang" data-lang="zh">
+                        基于医学研究数据的生存预测工具，帮助医疗专业人员评估患者预后情况。
+                    </p>
+                    <p class="text-sm text-gray-400 mb-4 hidden lang" data-lang="en">
+                        A survival prediction tool based on medical research data to help healthcare professionals assess patient prognosis.
+                    </p>
+                    <div class="flex space-x-3">
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fa fa-file-text-o"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fa fa-question-circle-o"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fa fa-envelope-o"></i>
+                        </a>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-3 lang" data-lang="zh">快速链接</h3>
+                    <h3 class="text-lg font-semibold mb-3 hidden lang" data-lang="en">Quick Links</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li>
+                            <a href="#" class="text-gray-400 hover:text-white transition-colors lang" data-lang="zh">使用帮助</a>
+                            <a href="#" class="text-gray-400 hover:text-white transition-colors hidden lang" data-lang="en">Usage Help</a>
+                        </li>
+                        <li>
+                            <a href="#" class="text-gray-400 hover:text-white transition-colors lang" data-lang="zh">参考文献</a>
+                            <a href="#" class="text-gray-400 hover:text-white transition-colors hidden lang" data-lang="en">References</a>
+                        </li>
+                        <li>
+                            <a href="#" class="text-gray-400 hover:text-white transition-colors lang" data-lang="zh">隐私政策</a>
+                            <a href="#" class="text-gray-400 hover:text-white transition-colors hidden lang" data-lang="en">Privacy Policy</a>
+                        </li>
+                        <li>
+                            <a href="#" class="text-gray-400 hover:text-white transition-colors lang" data-lang="zh">联系我们</a>
+                            <a href="#" class="text-gray-400 hover:text-white transition-colors hidden lang" data-lang="en">Contact Us</a>
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-3 lang" data-lang="zh">免责声明</h3>
+                    <h3 class="text-lg font-semibold mb-3 hidden lang" data-lang="en">Disclaimer</h3>
+                    <p class="text-sm text-gray-400 lang" data-lang="zh">
+                        本计算器仅供医疗专业人员使用，其结果仅作为临床决策的参考，不应替代专业医生的判断。
+                    </p>
+                    <p class="text-sm text-gray-400 hidden lang" data-lang="en">
+                        This calculator is for use by medical professionals only. The results are provided as a reference for clinical decision-making and should not replace the judgment of a professional physician.
+                    </p>
+                    <p class="text-sm text-gray-400 mt-4 lang" data-lang="zh">© 2025 EOCRC预后计算器</p>
+                    <p class="text-sm text-gray-400 mt-4 hidden lang" data-lang="en">© 2025 EOCRC Prognosis Calculator</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 打印按钮 -->
+    <button id="printBtn" class="print-btn no-print" title="打印结果">
+        <i class="fa fa-print"></i>
+    </button>
+
+    <!-- 帮助模态框 -->
+    <div id="helpModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800 lang" data-lang="zh">使用帮助</h2>
+                    <h2 class="text-2xl font-bold text-gray-800 hidden lang" data-lang="en">Usage Help</h2>
+                    <button id="closeHelpBtn" class="text-gray-500 hover:text-gray-700">
+                        <i class="fa fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="prose max-w-none">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2 lang" data-lang="zh">什么是EOCRC预后计算器？</h3>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2 hidden lang" data-lang="en">What is EOCRC Prognosis Calculator?</h3>
+                    <p class="text-gray-700 mb-4 lang" data-lang="zh">
+                        早期发病结直肠癌（EOCRC）预后计算器是一个基于医学研究数据的工具，用于预测EOCRC患者的生存概率。通过输入患者的临床指标，该工具可以计算总分并预测1年、3年和5年的生存概率，同时进行风险分层。
+                    </p>
+                    <p class="text-gray-700 mb-4 hidden lang" data-lang="en">
+                        The Early-Onset Colorectal Cancer (EOCRC) Prognosis Calculator is a tool based on medical research data for predicting survival probability in EOCRC patients. By entering the patient's clinical indicators, this tool can calculate a total score and predict 1-year, 3-year, and 5-year survival probabilities, while also performing risk stratification.
+                    </p>
+                    
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2 lang" data-lang="zh">如何使用本计算器？</h3>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2 hidden lang" data-lang="en">How to use this calculator?</h3>
+                    <ol class="list-decimal pl-5 mb-4 text-gray-700 lang" data-lang="zh">
+                        <li class="mb-2">在左侧表单中填写患者的各项临床指标。</li>
+                        <li class="mb-2">所有字段均为必填项，请确保完整填写。</li>
+                        <li class="mb-2">点击"计算预后"按钮。</li>
+                        <li class="mb-2">右侧将显示计算结果，包括总分、风险分层和生存概率预测。</li>
+                        <li class="mb-2">您可以点击右下角的打印按钮保存或打印结果。</li>
+                    </ol>
+                    <ol class="list-decimal pl-5 mb-4 text-gray-700 hidden lang" data-lang="en">
+                        <li class="mb-2">Fill in all patient clinical indicators in the left form.</li>
+                        <li class="mb-2">All fields are required, please ensure complete filling.</li>
+                        <li class="mb-2">Click the "Calculate Prognosis" button.</li>
+                        <li class="mb-2">The calculation results will be displayed on the right, including total score, risk stratification, and survival probability prediction.</li>
+                        <li class="mb-2">You can click the print button in the lower right corner to save or print the results.</li>
+                    </ol>
+                    
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2 lang" data-lang="zh">关于风险分层</h3>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2 hidden lang" data-lang="en">About Risk Stratification</h3>
+                    <p class="text-gray-700 mb-4 lang" data-lang="zh">
+                        本计算器根据总分将患者分为低危和高危两组：
+                    </p>
+                    <p class="text-gray-700 mb-4 hidden lang" data-lang="en">
+                        This calculator stratifies patients into low-risk and high-risk groups based on the total score:
+                    </p>
+                    <ul class="list-disc pl-5 mb-4 text-gray-700">
+                        <li class="mb-1"><span class="font-medium">低危 (Low Risk):</span> 总分 ≤ 240.5</li>
+                        <li class="mb-1"><span class="font-medium">高危 (High Risk):</span> 总分 > 240.5</li>
+                    </ul>
+                    
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2 lang" data-lang="zh">免责声明</h3>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2 hidden lang" data-lang="en">Disclaimer</h3>
+                    <p class="text-gray-700 mb-4 lang" data-lang="zh">
+                        本计算器仅供医疗专业人员使用，其结果仅作为临床决策的参考，不应替代专业医生的判断。计算结果基于研究数据的统计分析，个体患者的实际预后可能因其他未纳入模型的因素而有所不同。
+                    </p>
+                    <p class="text-gray-700 mb-4 hidden lang" data-lang="en">
+                        This calculator is for use by medical professionals only. The results are provided as a reference for clinical decision-making and should not replace the judgment of a professional physician. The calculation results are based on statistical analysis of research data, and the actual prognosis of individual patients may vary due to other factors not included in the model.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 生存概率映射表（模拟数据，实际应用中应替换为基于研究的准确映射）
+        const survivalProbabilityMap = {
+            // 总分: [1年生存率, 3年生存率, 5年生存率]
+            0: [98, 95, 92],
+            10: [97, 93, 89],
+            20: [96, 91, 86],
+            30: [95, 89, 83],
+            40: [94, 87, 80],
+            50: [93, 85, 77],
+            60: [92, 83, 74],
+            70: [91, 81, 71],
+            80: [90, 79, 68],
+            90: [89, 77, 65],
+            100: [88, 75, 62],
+            110: [87, 73, 59],
+            120: [86, 71, 56],
+            130: [85, 69, 53],
+            140: [84, 67, 50],
+            150: [83, 65, 47],
+            160: [82, 63, 44],
+            170: [81, 61, 41],
+            180: [80, 59, 38],
+            190: [78, 57, 36],
+            200: [76, 55, 34],
+            210: [74, 53, 32],
+            220: [72, 51, 30],
+            230: [70, 49, 28],
+            240: [68, 47, 26],
+            241: [66, 45, 24],
+            250: [64, 43, 23],
+            260: [62, 41, 22],
+            270: [60, 39, 21],
+            280: [58, 37, 20],
+            290: [56, 35, 19],
+            300: [54, 33, 18],
+            310: [52, 31, 17],
+            320: [50, 29, 16],
+            330: [48, 27, 15],
+            340: [46, 25, 14],
+            350: [44, 23, 13],
+            360: [42, 21, 12],
+            370: [40, 19, 11],
+            380: [38, 17, 10],
+            390: [36, 15, 9],
+            400: [34, 13, 8]
+        };
+
+        // 临床建议映射
+        const clinicalRecommendations = {
+            low: {
+                zh: "低危患者预后较好，建议：1) 定期随访，每3-6个月进行一次CEA检测和影像学检查；2) 保持健康的生活方式，包括均衡饮食、规律运动和戒烟限酒；3) 考虑参加相关临床试验，探索更优治疗方案。",
+                en: "Low-risk patients have a better prognosis. Recommendations: 1) Regular follow-up, including CEA testing and imaging every 3-6 months; 2) Maintain a healthy lifestyle, including balanced diet, regular exercise, and avoiding smoking and excessive alcohol; 3) Consider participating in relevant clinical trials to explore optimal treatment options."
+            },
+            high: {
+                zh: "高危患者预后较差，建议：1) 密切监测，每2-3个月进行一次CEA检测和影像学检查；2) 考虑更积极的治疗策略，如强化化疗或靶向治疗；3) 评估是否适合参加新型治疗方法的临床试验；4) 提供心理支持和营养指导，改善生活质量。",
+                en: "High-risk patients have a poorer prognosis. Recommendations: 1) Close monitoring, including CEA testing and imaging every 2-3 months; 2) Consider more aggressive treatment strategies, such as intensified chemotherapy or targeted therapy; 3) Evaluate eligibility for clinical trials of novel treatment methods; 4) Provide psychological support and nutritional guidance to improve quality of life."
+            }
+        };
+
+        // DOM元素
+        const form = document.getElementById('patientForm');
+        const resultCard = document.getElementById('resultCard');
+        const initialPrompt = document.getElementById('initialPrompt');
+        const totalScoreElement = document.getElementById('totalScore');
+        const riskLevelElement = document.getElementById('riskLevel');
+        const oneYearSurvivalElement = document.getElementById('oneYearSurvival');
+        const threeYearSurvivalElement = document.getElementById('threeYearSurvival');
+        const fiveYearSurvivalElement = document.getElementById('fiveYearSurvival');
+        const clinicalRecommendationElement = document.getElementById('clinicalRecommendation');
+        const clinicalRecommendationEnElement = document.getElementById('clinicalRecommendationEn');
+        const printBtn = document.getElementById('printBtn');
+        const helpBtn = document.getElementById('helpBtn');
+        const closeHelpBtn = document.getElementById('closeHelpBtn');
+        const helpModal = document.getElementById('helpModal');
+        const langToggle = document.getElementById('langToggle');
+        
+        // 图表对象
+        let survivalChart = null;
+
+        // 语言切换功能
+        langToggle.addEventListener('click', function() {
+            const currentLang = document.documentElement.lang;
+            const newLang = currentLang === 'zh-CN' ? 'en-US' : 'zh-CN';
+            
+            document.documentElement.lang = newLang;
+            
+            // 切换语言显示
+            document.querySelectorAll('.lang').forEach(el => {
+                if (el.dataset.lang === newLang.split('-')[0]) {
+                    el.classList.remove('hidden');
+                } else {
+                    el.classList.add('hidden');
+                }
+            });
+            
+            // 更新按钮文本
+            this.innerHTML = newLang === 'zh-CN' 
+                ? '<i class="fa fa-globe mr-2"></i>中文' 
+                : '<i class="fa fa-globe mr-2"></i>English';
+            
+            // 如果已经计算过结果，更新图表
+            if (resultCard.classList.contains('opacity-100')) {
+                updateSurvivalChart();
+            }
+        });
+
+        // 帮助模态框
+        helpBtn.addEventListener('click', function() {
+            helpModal.classList.remove('hidden');
+        });
+
+        closeHelpBtn.addEventListener('click', function() {
+            helpModal.classList.add('hidden');
+        });
+
+        // 点击模态框外部关闭
+        helpModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.add('hidden');
+            }
+        });
+
+        // 打印功能
+        printBtn.addEventListener('click', function() {
+            window.print();
+        });
+
+        // 表单提交处理
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // 计算总分
+            const totalScore = calculateTotalScore();
+            
+            // 更新总分显示
+            totalScoreElement.textContent = totalScore;
+            
+            // 更新总分圆环进度
+            updateScoreCircle(totalScore);
+            
+            // 确定风险等级
+            const riskLevel = totalScore <= 240.5 ? 'low' : 'high';
+            updateRiskLevel(riskLevel);
+            
+            // 计算生存概率
+            const survivalRates = calculateSurvivalRates(totalScore);
+            updateSurvivalRates(survivalRates);
+            
+            // 更新临床建议
+            updateClinicalRecommendation(riskLevel);
+            
+            // 显示结果卡片
+            showResultCard();
+            
+            // 平滑滚动到结果区域
+            resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+
+        // 计算总分
+        function calculateTotalScore() {
+            let score = 0;
+            
+            // 获取下拉选择框的分值
+            document.querySelectorAll('select').forEach(select => {
+                const selectedOption = select.options[select.selectedIndex];
+                if (selectedOption && selectedOption.dataset.score) {
+                    score += parseInt(selectedOption.dataset.score);
+                }
+            });
+            
+            // 获取单选按钮的分值
+            document.querySelectorAll('input[type="radio"]:checked').forEach(radio => {
+                if (radio.dataset.score) {
+                    score += parseInt(radio.dataset.score);
+                }
+            });
+            
+            return score;
+        }
+
+        // 更新风险等级显示
+        function updateRiskLevel(riskLevel) {
+            const riskBar = document.getElementById('riskBar');
+            
+            if (riskLevel === 'low') {
+                riskLevelElement.className = 'badge badge-low text-base py-2 px-4';
+                riskLevelElement.innerHTML = `
+                    <i class="fa fa-check-circle mr-2"></i>
+                    <span class="lang" data-lang="zh">低危</span>
+                    <span class="hidden lang" data-lang="en">Low Risk</span>
+                `;
+                riskBar.className = 'h-full bg-green-500 rounded-full transition-all duration-1000';
+                riskBar.style.width = '30%';
+            } else {
+                riskLevelElement.className = 'badge badge-high text-base py-2 px-4';
+                riskLevelElement.innerHTML = `
+                    <i class="fa fa-exclamation-circle mr-2"></i>
+                    <span class="lang" data-lang="zh">高危</span>
+                    <span class="hidden lang" data-lang="en">High Risk</span>
+                `;
+                riskBar.className = 'h-full bg-red-500 rounded-full transition-all duration-1000';
+                riskBar.style.width = '70%';
+            }
+        }
+
+        // 计算生存概率
+        function calculateSurvivalRates(score) {
+            // 如果分数在映射表中直接存在，返回对应值
+            if (survivalProbabilityMap[score]) {
+                return survivalProbabilityMap[score];
+            }
+            
+            // 否则找到最接近的两个分数进行线性插值
+            const scores = Object.keys(survivalProbabilityMap).map(Number).sort((a, b) => a - b);
+            
+            // 如果分数小于最小值，返回最小值对应的值
+            if (score <= scores[0]) {
+                return survivalProbabilityMap[scores[0]];
+            }
+            
+            // 如果分数大于最大值，返回最大值对应的值
+            if (score >= scores[scores.length - 1]) {
+                return survivalProbabilityMap[scores[scores.length - 1]];
+            }
+            
+            // 找到分数所在的区间
+            for (let i = 0; i < scores.length - 1; i++) {
+                if (score >= scores[i] && score <= scores[i + 1]) {
+                    const lowerScore = scores[i];
+                    const upperScore = scores[i + 1];
+                    const lowerRates = survivalProbabilityMap[lowerScore];
+                    const upperRates = survivalProbabilityMap[upperScore];
+                    
+                    // 线性插值
+                    const ratio = (score - lowerScore) / (upperScore - lowerScore);
+                    const oneYear = Math.round(lowerRates[0] + (upperRates[0] - lowerRates[0]) * ratio);
+                    const threeYear = Math.round(lowerRates[1] + (upperRates[1] - lowerRates[1]) * ratio);
+                    const fiveYear = Math.round(lowerRates[2] + (upperRates[2] - lowerRates[2]) * ratio);
+                    
+                    return [oneYear, threeYear, fiveYear];
+                }
+            }
+            
+            // 默认返回
+            return [50, 30, 20];
+        }
+
+        // 更新生存概率显示
+        function updateSurvivalRates(rates) {
+            oneYearSurvivalElement.textContent = `${rates[0]}%`;
+            threeYearSurvivalElement.textContent = `${rates[1]}%`;
+            fiveYearSurvivalElement.textContent = `${rates[2]}%`;
+            
+            // 更新图表
+            updateSurvivalChart(rates);
+        }
+
+        // 更新生存概率图表
+        function updateSurvivalChart(rates) {
+            const ctx = document.getElementById('survivalChart').getContext('2d');
+            
+            // 如果图表已存在，销毁它
+            if (survivalChart) {
+                survivalChart.destroy();
+            }
+            
+            const isChinese = document.documentElement.lang === 'zh-CN';
+            
+            // 创建新图表
+            survivalChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: isChinese ? ['1年', '3年', '5年'] : ['1-Year', '3-Year', '5-Year'],
+                    datasets: [{
+                        label: isChinese ? '生存率' : 'Survival Rate',
+                        data: rates,
+                        backgroundColor: [
+                            'rgba(30, 136, 229, 0.7)',
+                            'rgba(30, 136, 229, 0.8)',
+                            'rgba(30, 136, 229, 0.9)'
+                        ],
+                        borderColor: [
+                            'rgba(30, 136, 229, 1)',
+                            'rgba(30, 136, 229, 1)',
+                            'rgba(30, 136, 229, 1)'
+                        ],
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        barThickness: 40,
+                        maxBarThickness: 50
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeOutQuart'
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: isChinese ? '生存率 (%)' : 'Survival Rate (%)',
+                                color: '#666',
+                                font: {
+                                    size: 12,
+                                    weight: 'normal'
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                            titleColor: '#333',
+                            bodyColor: '#666',
+                            borderColor: '#ddd',
+                            borderWidth: 1,
+                            padding: 12,
+                            boxPadding: 6,
+                            usePointStyle: true,
+                            callbacks: {
+                                label: function(context) {
+                                    return `${isChinese ? '生存率' : 'Survival Rate'}: ${context.raw}%`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 更新临床建议
+        function updateClinicalRecommendation(riskLevel) {
+            const isChinese = document.documentElement.lang === 'zh-CN';
+            const recommendation = clinicalRecommendations[riskLevel];
+            
+            if (isChinese) {
+                clinicalRecommendationElement.textContent = recommendation.zh;
+                clinicalRecommendationEnElement.textContent = recommendation.en;
+            } else {
+                clinicalRecommendationElement.textContent = recommendation.en;
+                clinicalRecommendationEnElement.textContent = recommendation.zh;
+            }
+        }
+
+        // 更新总分圆环进度
+        function updateScoreCircle(score) {
+            const circle = document.getElementById('scoreCircle');
+            const radius = circle.r.baseVal.value;
+            const circumference = radius * 2 * Math.PI;
+            
+            // 设置圆环的周长
+            circle.style.strokeDasharray = `${circumference} ${circumference}`;
+            
+            // 计算进度（分数范围0-400）
+            const percent = Math.min(score / 400, 1);
+            const offset = circumference - percent * circumference;
+            
+            // 设置圆环的偏移量，实现进度动画
+            circle.style.strokeDashoffset = offset;
+            
+            // 根据分数设置不同的颜色
+            if (score <= 100) {
+                circle.style.stroke = '#4caf50'; // 绿色
+            } else if (score <= 200) {
+                circle.style.stroke = '#8bc34a'; // 浅绿色
+            } else if (score <= 240.5) {
+                circle.style.stroke = '#ffc107'; // 黄色
+            } else if (score <= 300) {
+                circle.style.stroke = '#ff9800'; // 橙色
+            } else {
+                circle.style.stroke = '#f44336'; // 红色
+            }
+        }
+
+        // 显示结果卡片
+        function showResultCard() {
+            // 添加进入动画
+            const elements = resultCard.querySelectorAll('.section-title, .survival-card, #riskLevel, #clinicalRecommendation, #clinicalRecommendationEn');
+            elements.forEach((el, index) => {
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    el.style.transition = 'all 0.5s ease forwards';
+                    el.style.opacity = '1';
+                    el.style.transform = 'translateY(0)';
+                }, 100 * index);
+            });
+        }
+        
+        // 页面加载时初始化结果卡片
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化总分圆环
+            updateScoreCircle(0);
+            // 显示结果卡片
+            showResultCard();
+        });
+
+        // 表单重置处理
+        form.addEventListener('reset', function() {
+            // 重置总分
+            totalScoreElement.textContent = '0';
+            
+            // 重置风险等级
+            riskLevelElement.className = 'inline-block badge badge-low';
+            riskLevelElement.innerHTML = `
+                <span class="lang" data-lang="zh">低危</span>
+                <span class="hidden lang" data-lang="en">Low Risk</span>
+            `;
+            
+            // 重置生存概率
+            oneYearSurvivalElement.textContent = '--%';
+            threeYearSurvivalElement.textContent = '--%';
+            fiveYearSurvivalElement.textContent = '--%';
+            
+            // 重置临床建议
+            const isChinese = document.documentElement.lang === 'zh-CN';
+            clinicalRecommendationElement.textContent = isChinese 
+                ? '请输入患者临床指标以获取预后预测结果和临床建议。'
+                : 'Please enter patient clinical indicators to obtain prognosis prediction results and clinical recommendations.';
+            clinicalRecommendationEnElement.textContent = isChinese
+                ? 'Please enter patient clinical indicators to obtain prognosis prediction results and clinical recommendations.'
+                : '请输入患者临床指标以获取预后预测结果和临床建议。';
+            
+            // 销毁图表
+            if (survivalChart) {
+                survivalChart.destroy();
+                survivalChart = null;
+            }
+            
+            // 显示初始提示
+            resultCard.classList.remove('opacity-100', 'translate-y-0');
+            resultCard.classList.add('opacity-0', 'translate-y-4');
+            initialPrompt.classList.remove('hidden');
+        });
+    </script>
+</body>
+</html>
